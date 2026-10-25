@@ -1,0 +1,34 @@
+{
+  "name": "@nocturne/chess-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Authoritative chess rules, WebSocket transport and AI provider registry",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./dist/index.cjs",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "scripts": {
+    "dev": "tsx watch src/cli.ts",
+    "start": "node dist/cli.cjs",
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@nocturne/chess-shared": "workspace:*",
+    "chess.js": "^1.4.0",
+    "ws": "^8.22.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "@types/ws": "^8.18.1",
+    "tsx": "^4.20.6",
+    "tsup": "^9.0.0",
+    "typescript": "~5.9.3",
+    "vitest": "^5.0.5"
+  }
+}

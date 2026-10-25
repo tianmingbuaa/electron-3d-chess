@@ -1,0 +1,19 @@
+{
+  "name": "@nocturne/chess-desktop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Electron shell that hosts the local chess backend and the 3D renderer",
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@nocturne/chess-server": "workspace:*",
+    "@nocturne/chess-shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "tsup": "^9.0.0",
+    "typescript": "~5.9.3"
+  }
+}
