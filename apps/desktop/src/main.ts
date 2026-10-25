@@ -1,4 +1,11 @@
-import { app, BrowserWindow, Menu, ipcMain, shell } from 'electron';
+import {
+  app,
+  BrowserWindow,
+  Menu,
+  ipcMain,
+  shell,
+  type MenuItemConstructorOptions,
+} from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
 import { createChessServer, type ChessServer } from '@nocturne/chess-server';
@@ -9,6 +16,10 @@ const CAPTURE_SCRIPT = process.env.CHESS_CAPTURE_SCRIPT;
 const CAPTURE_QUERY = process.env.CHESS_CAPTURE_QUERY;
 const IS_SMOKE_TEST = Boolean(CAPTURE_PATH);
 const IS_MAC = process.platform === 'darwin';
+const IS_WINDOWS = process.platform === 'win32';
+
+// Windows taskbar grouping / notification identity must match the appId.
+if (IS_WINDOWS) app.setAppUserModelId('com.nocturne.chess');
 
 let mainWindow: BrowserWindow | null = null;
 let backend: ChessServer | null = null;
@@ -31,6 +42,26 @@ async function startBackend(): Promise<ChessServer> {
       else console.log(line, meta);
     },
   });
+}
+
+/**
+ * macOS expects a real application menu: without it, standard shortcuts such as
+ * Cmd+Q, Cmd+W and Cmd+C stop working and the menu bar has no application entry.
+ * Windows/Linux keep the cleaner menu-less presentation.
+ */
+function installApplicationMenu(): void {
+  if (!IS_MAC) {
+    Menu.setApplicationMenu(null);
+    return;
+  }
+
+  const template: MenuItemConstructorOptions[] = [
+    { role: 'appMenu' },
+    { role: 'fileMenu' },
+    { role: 'editMenu' },
+    { role: 'windowMenu' },
+  ];
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
 function createWindow(server: ChessServer): BrowserWindow {
@@ -143,7 +174,7 @@ async function bootstrap(): Promise<void> {
 
   await app.whenReady();
 
-  Menu.setApplicationMenu(null);
+  installApplicationMenu();
 
   if (!DEV_RENDERER_URL) {
     backend = await startBackend();

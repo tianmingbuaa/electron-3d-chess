@@ -2,6 +2,9 @@
 
 > 一座安静的三维棋艺工作室 —— 基于 Electron + React + Three.js 的 GPU 加速国际象棋游戏。
 
+[![CI](https://github.com/tianmingbuaa/electron-3d-chess/actions/workflows/ci.yml/badge.svg)](https://github.com/tianmingbuaa/electron-3d-chess/actions/workflows/ci.yml)
+[![Release](https://github.com/tianmingbuaa/electron-3d-chess/actions/workflows/release.yml/badge.svg)](https://github.com/tianmingbuaa/electron-3d-chess/actions/workflows/release.yml)
+
 Nocturne Chess 是一个桌面端国际象棋游戏。它将**权威棋规与 AI 服务**放在独立的 Node.js 后端，把**高品质 3D 棋盘、程序化棋子和完整交互**放在 React / WebGL 前端，通过类型化 WebSocket 协议通信。
 
 ## 特性
@@ -54,8 +57,13 @@ pnpm dev
 pnpm build
 pnpm start
 
-# 打包安装包（electron-builder）
+# 打包当前平台的安装包（electron-builder）
 pnpm dist
+
+# 在对应平台上生成指定平台的安装包
+pnpm dist:linux     # Linux AppImage
+pnpm dist:windows   # Windows NSIS
+pnpm dist:macos     # macOS DMG（x64 + arm64）
 
 # 只生成未打包目录，便于检查产物
 pnpm dist:dir
@@ -67,6 +75,21 @@ pnpm test
 # 真实 Electron 窗口截图（视觉冒烟测试）
 pnpm screenshot
 ```
+
+## 跨平台构建与发布
+
+仓库包含两条 GitHub Actions 工作流：
+
+- **CI**：`main` push / PR 时在 Linux 上执行类型检查、32 项测试与生产构建；
+- **Release**：推送 `v*` tag 时，在 Ubuntu、Windows、macOS 原生 runner 上并行构建 AppImage、NSIS 与两个 DMG，全部成功后自动创建 GitHub Release 并附加 `SHA256SUMS.txt`。
+
+```bash
+# 版本号同步后，用 tag 触发三平台发布
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+产物命名统一为 `nocturne-chess-<version>-<os>-<arch>.<ext>`。当前 CI 构建**未签名**，macOS Gatekeeper 与 Windows SmartScreen 可能要求用户手动放行；签名、发布权限和手动构建方法见 [跨平台发布指南](docs/RELEASING.md)。
 
 ## 操作
 
@@ -89,11 +112,19 @@ apps/
   web/              React + Three.js 渲染器
 packages/
   shared/           前后端共享的领域类型和协议定义
+.github/
+  workflows/
+    ci.yml          Linux CI：typecheck / test / build
+    release.yml     三平台构建与 tag 发布
+build/
+  icon.png          跨平台源图标
+  icon.ico          Windows 多尺寸图标
 docs/
   ARCHITECTURE.md   架构、数据流、安全与性能设计
   PROTOCOL.md       WebSocket / HTTP 协议参考
   AI_EXTENSION.md   AI 引擎扩展开发指南
   TESTING.md        类型/测试/截图/交互验收方法
+  RELEASING.md      GitHub Actions 跨平台构建、签名与发布
   ROADMAP.md        分阶段开发路线与后续方向
 scripts/
   capture.sh        Electron 截图冒烟脚本
@@ -138,7 +169,7 @@ flowchart LR
 
 ## 开发路线
 
-分阶段计划、当前完成度与后续增强方向见 [ROADMAP.md](docs/ROADMAP.md)。测试、无头截图与自动化脚本用法见 [TESTING.md](docs/TESTING.md)。
+分阶段计划、当前完成度与后续增强方向见 [ROADMAP.md](docs/ROADMAP.md)。测试、无头截图与自动化脚本用法见 [TESTING.md](docs/TESTING.md)，GitHub Actions 发布流程见 [RELEASING.md](docs/RELEASING.md)。
 
 ## 质量验证
 
@@ -149,6 +180,8 @@ flowchart LR
 - Vite 生产构建与 Electron 主进程打包；
 - 开发模式下 Vite HTTP/WS 代理的真实链路；
 - Electron 实机、`electron-builder --dir` 与 Linux AppImage 产物启动；
+- macOS/Windows 原生构建配置、平台图标、应用菜单与 Windows AppUserModelID；
+- GitHub Actions 三平台构建矩阵与 tag 驱动 Release 工作流；
 - 真实 Canvas 指针事件端到端：点击 e2 → e4 成功落子；
 - AI 执白自动落子、黑方视角翻转、窄窗抽屉面板、终局弹窗与 2D 降级棋盘截图；
 - 完整场景 3 秒帧率采样 **60.2 FPS**（p95 帧时间 16.8ms，1024×653/DPR 1）。
@@ -158,7 +191,8 @@ flowchart LR
 - 对局仅保存在当前 WebSocket 连接内；后端重启/断线重连会开始新对局。
 - 内置 AI 是占位引擎，适合验证完整链路，不追求棋力。
 - 暂无时钟、PGN、复盘、联机对战；路线图见 [ROADMAP](docs/ROADMAP.md)。
-- 发布配置提供 Linux AppImage / Windows NSIS / macOS DMG；本次实际验证了 Linux AppImage（`release/Nocturne Chess-1.0.0.AppImage`，约 121 MB）与解包目录。
+- 发布配置提供 Linux AppImage、Windows NSIS（非管理员安装）与 macOS x64/arm64 DMG；Linux AppImage 与解包目录已在本机实际启动验证，Windows/macOS 由 GitHub Actions 原生 runner 构建。
+- 跨平台 CI 产物默认未签名；正式分发建议配置 Apple Developer ID/notarization 与 Windows Authenticode，详见 [RELEASING.md](docs/RELEASING.md)。
 
 ## License
 

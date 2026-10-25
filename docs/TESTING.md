@@ -111,6 +111,22 @@ pnpm dist:dir   # 已验证可启动
 pnpm dist       # 生成平台安装包
 ```
 
-本次实际生成了 `release/Nocturne Chess-1.0.0.AppImage`（约 121 MB）并成功启动、加载 3D 场景。Windows NSIS / macOS DMG 配置已提供，但未在对应平台实测。
+本次实际生成了 `release/nocturne-chess-1.0.0-linux-x86_64.AppImage`（约 121 MB）并成功启动、加载 3D 场景。Windows NSIS 与 macOS DMG 由 GitHub Actions 的原生 runner 构建；本地只验证了 Linux 产物。
 
 已验证 Linux `release/linux-unpacked/nocturne-chess` 能启动、提供本地后端，并加载 packaged asar 内的主进程与 resources/web 静态前端。
+
+## 7. GitHub Actions
+
+- `.github/workflows/ci.yml`：`main` push / PR 上运行 `typecheck`、`test`、`build`。
+- `.github/workflows/release.yml`：`v*` tag 触发三平台原生构建，全部成功后自动生成 GitHub Release。
+- 手动运行 Release 工作流只会产出 7 天有效的 workflow artifacts；不会创建 Release。
+- tag 名（去掉 `v`）必须等于 `package.json.version`。
+- 构建矩阵会分别执行以下平台命令：
+
+| 平台 | 命令 | 产物 |
+| --- | --- | --- |
+| Linux x64 | `pnpm package:linux` | AppImage |
+| Windows x64 | `pnpm package:windows` | NSIS `.exe` |
+| macOS x64 + arm64 | `pnpm package:macos` | 两个 DMG |
+
+完整的发布、权限和签名说明见 [RELEASING.md](RELEASING.md)。

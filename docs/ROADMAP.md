@@ -12,6 +12,7 @@
 | 3 | 主 agent：Electron 壳、React 3D 场景、交互、视觉系统 | 完成 |
 | 4 | 联调、实际 Electron 渲染截图、性能与交互修正 | 完成 |
 | 5 | 打包验证、最终文档与全链路回归 | 完成 |
+| 6 | GitHub Actions 三平台 CI 与 Release 发布 | 已完成配置，等待首轮 Actions 运行 |
 
 ## 阶段 0：架构与契约
 
@@ -86,7 +87,22 @@
 - [x] README / 架构 / 协议 / AI 文档互链
 - [x] 两位模块子 agent 自测 + 主 agent 全链路回归与文档核对
 - [x] 清理调试日志与临时文件
-- [x] AppImage 实际生成并启动（`release/Nocturne Chess-1.0.0.AppImage`，121 MB）
+- [x] AppImage 实际生成并启动（`release/nocturne-chess-1.0.0-linux-x86_64.AppImage`，121 MB）
+
+## 阶段 6：跨平台 CI / Release
+
+- [x] macOS 跨平台修正：恢复原生应用菜单（Cmd+Q / Cmd+W / 编辑快捷键）
+- [x] Windows 跨平台修正：AppUserModelID、多尺寸 `icon.ico`、非管理员 NSIS 安装
+- [x] 统一 8-bit 跨平台图标，Linux/macOS 使用 PNG 源，Windows 使用 ICO
+- [x] 统一 artifact 命名：`nocturne-chess-${version}-${os}-${arch}.${ext}`
+- [x] `.gitattributes` 强制脚本/workflow 使用 LF，避免 Windows checkout 破坏 shell
+- [x] CI 工作流：main/PR 上 typecheck、32 项测试、生产构建
+- [x] Release 工作流：Ubuntu/Windows/macOS 原生 runner 并行构建
+- [x] macOS 同时构建 x64/arm64 DMG；Windows 构建 x64 NSIS；Linux 构建 x64 AppImage
+- [x] tag 版本与 `package.json.version` 一致性校验
+- [x] 三平台产物汇总后生成 `SHA256SUMS.txt` 并自动发布 GitHub Release
+- [x] 发布指北：签名/公证、权限、手动构建和未签名提示
+- [ ] 首次 GitHub Actions 运行结果（推送后由 Actions 页面确认）
 
 ## 实际验收记录
 
@@ -94,7 +110,7 @@
 | --- | --- |
 | `pnpm typecheck` | 4 个 workspace 包全部通过 |
 | `pnpm test` | 32/32，通过（约 1.1s） |
-| `pnpm build` / `pnpm dist` / `pnpm dist:dir` | 通过；AppImage 与 `release/linux-unpacked` 均可启动 |
+| `pnpm build` / `pnpm dist:linux` / `pnpm dist:dir` | 通过；新命名 AppImage 与 `release/linux-unpacked` 均可启动 |
 | 开发模式代理 | `GET :5173/api/runtime` 与 `ws://:5173/ws` 正常 |
 | 真实指针点击 | 点击 e2 选中，点击 e4 落子成功 |
 | AI 执白 | 点击“执黑”后自动落子 `Na3`，棋盘翻转 |
@@ -111,7 +127,8 @@
 4. **在线对战**：房间、观众、重连恢复、反作弊。
 5. **分析模式**：引擎评估条、最佳着提示、失误检测。
 6. **主题工坊**：可替换材质包/棋子套装/环境光照。
-7. **国际化与平台打包**：macOS/Windows/Linux 签名与自动更新。
+7. **签名与自动更新**：Apple notarization、Windows Authenticode、更新服务器/签名校验。
+8. **国际化**：多语言 UI 与文档。
 
 ## 协作拆分子 agent 的理由
 

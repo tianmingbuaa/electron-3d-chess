@@ -72,6 +72,10 @@ apps/web
 ├─ store/gameStore.ts   权威快照 → UI 状态、选择、音效、提示
 ├─ components/          侧栏、顶栏、对话、状态浮层
 └─ scene/               Three.js 场景、程序化棋盘/棋子、2D 降级
+
+.github/workflows
+├─ ci.yml               main/PR 的类型、测试、构建检查
+└─ release.yml          三平台原生构建 + tag Release
 ```
 
 ## 核心数据流：走一步棋
@@ -144,6 +148,17 @@ sequenceDiagram
 - 悔棋在 AI 模式下由后端恢复至人类回合，前端只发意图；
 - 结果弹窗以“局面 + 结果”为键，可关闭后继续查看棋盘；
 - 声音由 WebAudio 程序合成，首次用户手势后解锁。
+
+## 跨平台兼容性
+
+- 所有主进程与后端文件路径通过 `node:path` 构造；用户目录、ASAR 内的 `__dirname` 与 `process.resourcesPath` 分别适配 macOS `.app/Contents/Resources` 与 Windows/Linux `resources/`。
+- 静态服务器使用规范化路径 + realpath 边界检查，并在 URL 层拒绝反斜杠、盘符、`..` 与隐藏段，因此 Windows 路径语义不会绕过根目录。
+- Windows：`AppUserModelID` 与 `appId` 一致；NSIS 使用 ICO、多尺寸图标与非管理员安装模式。
+- macOS：恢复原生 app/file/edit/window 菜单，保证 Cmd+Q、Cmd+W、复制粘贴等标准快捷键；`hiddenInset` 标题栏交由系统交通灯布局。
+- Linux：AppImage + freedesktop desktopName/WM_CLASS 同步。
+- `.gitattributes` 强制 shell/workflow 使用 LF，防止 Windows checkout 的 CRLF 破坏脚本。
+- CI 在三种原生 runner 上先跑同一套 typecheck/test/build，再由 electron-builder 在对应平台打包，不做不可靠的跨平台交叉打包。
+- CI 产物默认未签名；生产分发应补 Apple Developer ID/notarization 与 Windows Authenticode（见 `docs/RELEASING.md`）。
 
 ## 安全
 

@@ -17,7 +17,13 @@
     "typecheck": "pnpm -r --if-present typecheck",
     "dist": "pnpm run build && electron-builder",
     "dist:dir": "pnpm run build && electron-builder --dir",
-    "screenshot": "bash scripts/capture.sh"
+    "screenshot": "bash scripts/capture.sh",
+    "package:linux": "electron-builder --linux AppImage --x64 --publish never",
+    "package:windows": "electron-builder --win nsis --x64 --publish never",
+    "package:macos": "electron-builder --mac dmg --x64 --arm64 --publish never",
+    "dist:linux": "pnpm run build && pnpm run package:linux",
+    "dist:windows": "pnpm run build && pnpm run package:windows",
+    "dist:macos": "pnpm run build && pnpm run package:macos"
   },
   "devDependencies": {
     "@types/node": "^24.10.1",
@@ -61,7 +67,7 @@
       "target": [
         "nsis"
       ],
-      "icon": "build/icon.png"
+      "icon": "build/icon.ico"
     },
     "mac": {
       "target": [
@@ -69,8 +75,22 @@
       ],
       "icon": "build/icon.png",
       "category": "public.app-category.board-games"
+    },
+    "artifactName": "nocturne-chess-${version}-${os}-${arch}.${ext}",
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Nocturne Chess",
+      "deleteAppDataOnUninstall": false
     }
   },
   "packageManager": "pnpm@12.11.2",
-  "desktopName": "nocturne-chess.desktop"
+  "desktopName": "nocturne-chess.desktop",
+  "engines": {
+    "node": ">=24.0.0",
+    "pnpm": ">=12.0.0"
+  }
 }
