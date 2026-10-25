@@ -12,7 +12,7 @@
 | 3 | 主 agent：Electron 壳、React 3D 场景、交互、视觉系统 | 完成 |
 | 4 | 联调、实际 Electron 渲染截图、性能与交互修正 | 完成 |
 | 5 | 打包验证、最终文档与全链路回归 | 完成 |
-| 6 | GitHub Actions 三平台 CI 与 Release 发布 | 已完成配置，等待首轮 Actions 运行 |
+| 6 | GitHub Actions 三平台 CI 与 Release 发布 | 完成（首轮 CI + 三平台构建冒烟通过） |
 
 ## 阶段 0：架构与契约
 
@@ -102,7 +102,7 @@
 - [x] tag 版本与 `package.json.version` 一致性校验
 - [x] 三平台产物汇总后生成 `SHA256SUMS.txt` 并自动发布 GitHub Release
 - [x] 发布指北：签名/公证、权限、手动构建和未签名提示
-- [ ] 首次 GitHub Actions 运行结果（推送后由 Actions 页面确认）
+- [x] 首轮 GitHub Actions CI 通过；Windows/macOS/Linux 原生构建冒烟通过；临时验证分支已删除
 
 ## 实际验收记录
 
@@ -118,6 +118,8 @@
 | 3D 降级 | 无 WebGL 时自动切换 2D 棋盘，可继续对弈 |
 | 截图 | 1440×960 实机窗口，见 `docs/images/nocturne-chess.png` |
 | 渲染帧率 | 1024×653 / DPR 1：60.2 FPS，p95 16.8ms |
+| GitHub Actions CI | 通过（[run 40204195388](https://github.com/tianmingbuaa/electron-3d-chess/actions/runs/40204195388)） |
+| 三平台构建 | Windows x64 / macOS x64+arm64 / Linux x64 全部成功；Release job 按预期在非 tag 运行中跳过（[run 40204315643](https://github.com/tianmingbuaa/electron-3d-chess/actions/runs/40204315643)） |
 
 ## 后续增强（非本期范围）
 

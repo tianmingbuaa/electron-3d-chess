@@ -47,6 +47,8 @@ Release 的构建矩阵：
 
 ## 3. 手动构建（不发布）
 
+> 本轮已在临时分支上完成过一次三平台构建冒烟：Linux AppImage、Windows NSIS、macOS x64/arm64 DMG 均成功，Release job 因非 tag 被跳过。临时分支已删除。
+
 在 GitHub → Actions → **Release** → **Run workflow** 中从 `main` 触发。
 
 工作流会完成三平台构建并保留 workflow artifacts（7 天），但 release job 的条件是 `refs/tags/v*`，因此手动在分支上运行时**不会创建 Release**。
@@ -75,11 +77,11 @@ pnpm package:macos    # macOS x64 + arm64
 "artifactName": "nocturne-chess-${version}-${os}-${arch}.${ext}"
 ```
 
-示例（Linux 的 `${arch}` 在当前 electron-builder 中展开为 `x86_64`）：
+示例（`${os}` 在 electron-builder 中分别为 `linux` / `win` / `mac`；Linux 的 `${arch}` 当前展开为 `x86_64`）：
 
 ```text
 nocturne-chess-1.0.0-linux-x86_64.AppImage
-nocturne-chess-1.0.0-windows-x64.exe
+nocturne-chess-1.0.0-win-x64.exe
 nocturne-chess-1.0.0-mac-x64.dmg
 nocturne-chess-1.0.0-mac-arm64.dmg
 SHA256SUMS.txt

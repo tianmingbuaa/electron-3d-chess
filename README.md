@@ -181,7 +181,7 @@ flowchart LR
 - 开发模式下 Vite HTTP/WS 代理的真实链路；
 - Electron 实机、`electron-builder --dir` 与 Linux AppImage 产物启动；
 - macOS/Windows 原生构建配置、平台图标、应用菜单与 Windows AppUserModelID；
-- GitHub Actions 三平台构建矩阵与 tag 驱动 Release 工作流；
+- GitHub Actions 三平台构建矩阵与 tag 驱动 Release 工作流；首轮 CI 与 Windows/macOS/Linux 原生构建冒烟均通过；
 - 真实 Canvas 指针事件端到端：点击 e2 → e4 成功落子；
 - AI 执白自动落子、黑方视角翻转、窄窗抽屉面板、终局弹窗与 2D 降级棋盘截图；
 - 完整场景 3 秒帧率采样 **60.2 FPS**（p95 帧时间 16.8ms，1024×653/DPR 1）。
@@ -193,6 +193,7 @@ flowchart LR
 - 暂无时钟、PGN、复盘、联机对战；路线图见 [ROADMAP](docs/ROADMAP.md)。
 - 发布配置提供 Linux AppImage、Windows NSIS（非管理员安装）与 macOS x64/arm64 DMG；Linux AppImage 与解包目录已在本机实际启动验证，Windows/macOS 由 GitHub Actions 原生 runner 构建。
 - 跨平台 CI 产物默认未签名；正式分发建议配置 Apple Developer ID/notarization 与 Windows Authenticode，详见 [RELEASING.md](docs/RELEASING.md)。
+- 本次已完成三平台原生构建验证，但**没有自动创建正式 GitHub Release**；推送 `v*` tag（或从 tag ref 手动运行工作流）后由 Release job 发布。
 
 ## License
 
