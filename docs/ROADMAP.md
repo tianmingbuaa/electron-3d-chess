@@ -13,10 +13,11 @@
 | 4 | 联调、实际 Electron 渲染截图、性能与交互修正 | 完成 |
 | 5 | 打包验证、最终文档与全链路回归 | 完成 |
 | 6 | GitHub Actions 三平台 CI 与 Release 发布 | 完成（首轮 CI + 三平台构建冒烟通过） |
+| 7 | 浏览器本地 Web 模式：启动器、文档、真实浏览器验收 | 完成 |
 
 ## 阶段 0：架构与契约
 
-- [x] 选择 Electron + Vite + React + React Three Fiber 3D 技术路线
+- [x] 选择浏览器优先的 React + React Three Fiber 3D 技术路线，并保留 Electron 桌面壳
 - [x] 前后端分离；开发/生产两套拓扑
 - [x] pnpm workspace：`shared` / `server` / `web` / `desktop`
 - [x] 定义共享领域模型、完整 WebSocket 消息协议、AI Provider SPI
@@ -104,6 +105,19 @@
 - [x] 发布指北：签名/公证、权限、手动构建和未签名提示
 - [x] 首轮 GitHub Actions CI 通过；Windows/macOS/Linux 原生构建冒烟通过；临时验证分支已删除
 
+## 阶段 7：浏览器本地 Web 模式
+
+- [x] 新增 `pnpm web`：构建 Web 前后端并在 `127.0.0.1:8787` 启动，尝试自动打开默认浏览器
+- [x] 新增 `pnpm web:serve` / `pnpm web:build` / `pnpm web:dev` 三条独立命令
+- [x] 浏览器启动器 `scripts/serve-web.mjs`：静态页面 + API + WebSocket 同源单端口
+- [x] 固定回环监听、普通 HTTP、无账号/登录/多人房间依赖
+- [x] 浏览器构建目标从 Electron 专用版本调整为 ES2022
+- [x] 修复 macOS 浏览器误套用 Electron 交通灯留白的问题
+- [x] 增加 favicon / Apple touch icon
+- [x] 新增 `docs/WEB.md`，并更新 README/架构/测试文档
+- [x] CI 增加浏览器 Web 服务 smoke 测试
+- [x] Brave/Chromium 1440×960 真实渲染、Firefox 页面加载、浏览器原生 WebSocket 对局验证
+
 ## 实际验收记录
 
 | 检查 | 结果 |
@@ -111,12 +125,16 @@
 | `pnpm typecheck` | 4 个 workspace 包全部通过 |
 | `pnpm test` | 32/32，通过（约 1.1s） |
 | `pnpm build` / `pnpm dist:linux` / `pnpm dist:dir` | 通过；新命名 AppImage 与 `release/linux-unpacked` 均可启动 |
+| `pnpm web:build` + 本地 Web 服务 | 通过；页面、favicon、`/api/runtime`、`/api/health` 正常 |
+| Brave/Chromium 浏览器 | headless 1440×960 完整 3D 渲染，页面在线 |
+| Firefox 浏览器 | 页面与界面结构正常加载（无头截图） |
+| 浏览器原生 WebSocket | 收到 32 枚棋子的 welcome，完成 `e2 → e4` |
 | 开发模式代理 | `GET :5173/api/runtime` 与 `ws://:5173/ws` 正常 |
 | 真实指针点击 | 点击 e2 选中，点击 e4 落子成功 |
 | AI 执白 | 点击“执黑”后自动落子 `Na3`，棋盘翻转 |
 | 终局 | 愚人将杀 → “黑方胜 / Checkmate”弹窗 |
 | 3D 降级 | 无 WebGL 时自动切换 2D 棋盘，可继续对弈 |
-| 截图 | 1440×960 实机窗口，见 `docs/images/nocturne-chess.png` |
+| 截图 | 1440×960 浏览器实机窗口，见 `docs/images/nocturne-chess-browser.png` |
 | 渲染帧率 | 1024×653 / DPR 1：60.2 FPS，p95 16.8ms |
 | GitHub Actions CI | 通过（[run 40204195388](https://github.com/tianmingbuaa/electron-3d-chess/actions/runs/40204195388)） |
 | 三平台构建 | Windows x64 / macOS x64+arm64 / Linux x64 全部成功；Release job 按预期在非 tag 运行中跳过（[run 40204315643](https://github.com/tianmingbuaa/electron-3d-chess/actions/runs/40204315643)） |

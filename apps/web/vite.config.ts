@@ -20,7 +20,7 @@ export default defineConfig({
     },
   },
   build: {
-    target: 'chrome140',
+    target: 'es2022',
     outDir: 'dist',
     assetsInlineLimit: 0,
     sourcemap: false,

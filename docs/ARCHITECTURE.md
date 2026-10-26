@@ -2,17 +2,38 @@
 
 ## 目标
 
-Nocturne Chess 的目标不是一个“单文件 Electron demo”，而是一个可维护的桌面棋类应用基线：
+Nocturne Chess 的目标不是一个“单文件 Electron demo”，而是一个可维护的**浏览器优先**棋类应用基线：
 
 1. **权威规则在后端**：渲染器永远不能私自修改棋局。
 2. **前后端真正解耦**：二者通过类型化协议通信，后端可脱离 Electron 独立运行。
 3. **AI 是可替换的基础设施**：占位引擎只占一个 provider 槽位，扩展时无需改动 UI 协议。
 4. **视觉与帧率优先**：3D 资源全部程序化、零网络素材依赖；渲染参数在清晰度与 GPU 负载间取平衡。
-5. **桌面体验完整**：开发/生产启动、截图冒烟、打包、重连降级、健康检查。
+5. **浏览器本地体验完整**：一条命令构建、启动并在本机浏览器试玩；Electron 仅作为可选的桌面封装。
 
 ## 进程与部署拓扑
 
-### 开发模式
+### 浏览器模式（默认试玩路径）
+
+```text
+pnpm web
+├─ pnpm web:build
+│  ├─ apps/web/dist         React + Three.js 静态资源
+│  └─ apps/server/dist      本地后端
+└─ scripts/serve-web.mjs
+   └─ createChessServer({ host: '127.0.0.1', port: 8787, staticDir: apps/web/dist })
+      ├─ GET /               静态页面 + favicon/assets
+      ├─ GET /api/runtime    自动下发内部 WebSocket token 与路径
+      ├─ GET /api/health
+      └─ WS /ws              权威棋局与 AI
+```
+
+- 一个 Node.js 进程同源提供前端、API 与 WebSocket，浏览器只需访问 `http://127.0.0.1:8787/`。
+- 运行时通过系统默认浏览器打开页面；无图形会话时只打印 URL。
+- 面向本机单人试玩：无账号、无登录、无多人房间、无 HTTPS。
+- 浏览器端不依赖 Electron API；macOS 浏览器也不会套用 Electron 交通灯留白。
+- 页面刷新会建立新连接与新的内存对局，这是当前单机会话模型的一部分。
+
+### Electron 开发模式（可选）
 
 ```text
 pnpm dev
@@ -25,7 +46,7 @@ pnpm dev
 - Electron 主进程此时**不启动内置后端**，只负责窗口、安全策略与 shell。
 - 后端可以单独启动：`pnpm --filter @nocturne/chess-server dev`。
 
-### 生产模式
+### Electron 生产模式（可选）
 
 ```text
 electron main
@@ -37,15 +58,15 @@ electron main
 ```
 
 - 只绑定 `127.0.0.1`，端口随机，避免与用户其它服务冲突。
-- 首次请求 `/api/runtime` 取得随机能力令牌与 WebSocket 路径，渲染器随后连接。
+- 首次请求 `/api/runtime` 取得内部 WebSocket token 与路径，渲染器随后连接。
 - 页面与 API 同源，因此无需 CORS；没有暴露到局域网的监听。
 - 应用退出时优雅关闭 HTTP/WS 服务。
 
 ### 为什么不用 Electron IPC 传棋局？
 
-Electron IPC 很适合文件对话框、系统能力等桌面 API，但把棋局协议绑定到 IPC 会让后端无法脱离 Electron、难以做黑盒测试，也不利于将来替换为局域网/远程对战。
+Electron IPC 很适合文件对话框、系统能力等桌面 API，但把棋局协议绑定到 IPC 会让后端无法脱离 Electron、难以做黑盒测试，也不利于浏览器模式或将来替换为远程对战。
 
-本项目仅把 **桌面外壳能力**（版本、平台）放在 preload/IPC；棋局全部走标准 HTTP/WebSocket。preload 保持 `contextIsolation: true`、`sandbox: true`、`nodeIntegration: false`。
+浏览器模式完全不需要 IPC；Electron 模式也只把 **桌面外壳能力**（版本、平台）放在 preload/IPC。棋局全部走标准 HTTP/WebSocket，因此两种运行方式共享完全相同的业务代码。preload 保持 `contextIsolation: true`、`sandbox: true`、`nodeIntegration: false`。
 
 ## 分层
 
@@ -71,7 +92,11 @@ apps/web
 ├─ lib/runtime.ts       同源 runtime 解析
 ├─ store/gameStore.ts   权威快照 → UI 状态、选择、音效、提示
 ├─ components/          侧栏、顶栏、对话、状态浮层
-└─ scene/               Three.js 场景、程序化棋盘/棋子、2D 降级
+├─ scene/               Three.js 场景、程序化棋盘/棋子、2D 降级
+└─ public/              favicon / Apple touch icon
+
+scripts
+└─ serve-web.mjs        浏览器单机模式的本地启动器（构建产物 + API + WS）
 
 .github/workflows
 ├─ ci.yml               main/PR 的类型、测试、构建检查
@@ -151,6 +176,8 @@ sequenceDiagram
 
 ## 跨平台兼容性
 
+- 浏览器构建目标为 ES2022，不依赖 Electron 专属 API；macOS 顶部交通灯留白只在检测到 Electron bridge 后启用。
+- 前端图标使用本地 favicon；静态服务为浏览器提供正确的 MIME、缓存与 CSP 头。
 - 所有主进程与后端文件路径通过 `node:path` 构造；用户目录、ASAR 内的 `__dirname` 与 `process.resourcesPath` 分别适配 macOS `.app/Contents/Resources` 与 Windows/Linux `resources/`。
 - 静态服务器使用规范化路径 + realpath 边界检查，并在 URL 层拒绝反斜杠、盘符、`..` 与隐藏段，因此 Windows 路径语义不会绕过根目录。
 - Windows：`AppUserModelID` 与 `appId` 一致；NSIS 使用 ICO、多尺寸图标与非管理员安装模式。
@@ -162,17 +189,18 @@ sequenceDiagram
 
 ## 安全
 
-- `contextIsolation`、`sandbox` 开启，渲染器无 Node 权限。
-- 外部链接在系统浏览器打开，窗口内导航被阻止。
-- CSP 禁止对象、表单、frame 注入；脚本仅同源（开发期需 Vite inline preamble，因此允许 inline）。
-- HTTP/WS 只监听回环地址，WS 需要随机 token。
+- **浏览器模式**没有登录/账号概念，也不要求 HTTPS；服务固定绑定 `127.0.0.1`，不对局域网开放。
+- `/api/runtime` 下发的随机 token 仅是本地 WebSocket 的内部卫生措施（防止其它网页随意连接），不是用户认证，用户无感知。
+- **Electron 模式**：`contextIsolation`、`sandbox` 开启，渲染器无 Node 权限；外部链接在系统浏览器打开，窗口内导航被阻止。
+- 两种模式都由后端设置 CSP，禁止对象、表单、frame 注入；脚本仅同源（开发期 Vite 需 inline preamble，因此 meta 允许 inline）。
+- HTTP/WS 只监听回环地址。
 - 静态文件服务做路径规范化，阻止目录逃逸（见 `apps/server/src/static.ts`）。
 - Electron 45 自带 Chromium sandbox；打包配置不请求额外系统权限。
 
 ## 失败处理
 
 - 连接断开：指数退避重连，重新获取 token；游戏区显示恢复提示。
-- 后端重启：当前内存对局丢失，握手后会得到一局新的默认棋局。
+- 后端重启或浏览器刷新：当前内存对局丢失，握手后会得到一局新的默认棋局。
 - 非法请求：服务端返回结构化错误，不关闭连接、不破坏对局。
 - AI 异常/超时：回到可操作状态并给出错误，不阻塞后续走棋。
 - 3D 失败：错误边界切换 CSS 棋盘，仍然可以完成对局。
@@ -184,3 +212,4 @@ sequenceDiagram
 3. **复盘/计时**：快照已经包含完整 history，可扩展 PGN 导入导出和时钟字段。
 4. **联机对战**：把 WebSocket 层替换为房间路由，同一 `GameSession` 可挂多个观众/玩家连接。
 5. **多语言**：UI 文案目前集中在组件与 `lib/pieces.ts`，可迁移到 i18n 字典。
+6. **远端 Web 部署**：若要公开访问，需补充鉴权、房间隔离、HTTPS/TLS 终止与持久化；这与本期“本机单人试玩”边界不同。

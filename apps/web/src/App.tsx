@@ -56,6 +56,7 @@ function App() {
         if (disposed) return;
         document.documentElement.classList.add('is-electron');
         document.documentElement.classList.add(`platform-${info.platform}`);
+        if (info.platform === 'darwin') document.documentElement.classList.add('is-mac');
       });
     }
     return () => {

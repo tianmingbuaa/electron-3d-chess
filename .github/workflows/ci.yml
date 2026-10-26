@@ -52,3 +52,23 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+      - name: Browser web smoke test
+        shell: bash
+        run: |
+          set -euo pipefail
+          CHESS_NO_OPEN=1 CHESS_PORT=8799 node scripts/serve-web.mjs > /tmp/nocturne-web.log 2>&1 &
+          web_pid=$!
+          trap 'kill "$web_pid" 2>/dev/null || true' EXIT
+
+          pnpm exec wait-on -t 30000 http://127.0.0.1:8799/api/health
+          curl --fail --silent --show-error \
+            http://127.0.0.1:8799/api/health > /dev/null
+          curl --fail --silent --show-error \
+            http://127.0.0.1:8799/api/runtime > /dev/null
+          curl --fail --silent --show-error \
+            http://127.0.0.1:8799/favicon.png > /dev/null
+          curl --fail --silent --show-error \
+            http://127.0.0.1:8799/ -o /tmp/nocturne-index.html
+          grep -q '<title>Nocturne Chess</title>' /tmp/nocturne-index.html
+          echo "Browser web smoke test passed."

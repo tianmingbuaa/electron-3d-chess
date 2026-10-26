@@ -1,6 +1,6 @@
 # 测试与视觉验收
 
-本文记录如何复现 Nocturne Chess 的自动测试、真实 Electron 截图和交互检查。
+本文记录如何复现 Nocturne Chess 的自动测试、浏览器/Electron 启动、真实截图和交互检查。
 
 ## 1. 类型与单元/集成测试
 
@@ -19,7 +19,43 @@ pnpm test
 
 当前基线：**32 / 32 通过**。
 
-## 2. 构建与桌面启动
+## 2. Web 构建与启动
+
+### 浏览器模式
+
+```bash
+pnpm web:build
+CHESS_NO_OPEN=1 node scripts/serve-web.mjs
+# 打开 http://127.0.0.1:8787/
+```
+
+浏览器模式将同一个 Node 后端作为静态服务器：同一端口提供页面、`/api/*` 与 `/ws`。无需 Electron、登录或 HTTPS。
+
+验证 Web 服务：
+
+```bash
+curl -fsS http://127.0.0.1:8787/api/health
+curl -fsS http://127.0.0.1:8787/api/runtime
+curl -fsS http://127.0.0.1:8787/ | grep -q "Nocturne Chess"
+```
+
+浏览器开发模式：
+
+```bash
+pnpm web:dev
+# 浏览器打开 http://127.0.0.1:5173/
+```
+
+Vite 将 `/api` 与 `/ws` 代理到本地后端；不会启动 Electron。
+
+本次已完成的浏览器级验证：
+
+- Brave/Chromium headless 加载 `http://127.0.0.1:8787/` 并完成 1440×960 实拍截图；
+- Firefox headless 能加载页面与界面结构；
+- 使用 Node 24 全局 `WebSocket`（浏览器同源 API）连接服务端，收到 `welcome` 与 32 枚棋子状态，并成功执行 `e2 → e4`；
+- `/api/runtime`、favicon、JS/CSS 资源、CSP 与缓存头均响应正常。
+
+### Electron 桌面模式（可选）
 
 ```bash
 pnpm build
@@ -28,7 +64,7 @@ pnpm start
 
 `pnpm start` 会以生产模式运行 Electron：主进程启动一个临时端口的本地后端，加载 `apps/web/dist` 的静态资源。
 
-验证开发模式（后端 :8787 + Vite :5173 + Electron）：
+验证 Electron 开发模式（后端 :8787 + Vite :5173 + Electron）：
 
 ```bash
 pnpm dev
@@ -36,7 +72,7 @@ pnpm dev
 
 Vite 将 `/api` 与 `/ws` 代理到后端，Electron 只提供窗口。关闭 Electron 窗口后 `concurrently` 会停止另外两个进程。
 
-## 3. 无头/真实窗口截图
+## 3. Electron 无头/真实窗口截图
 
 ```bash
 pnpm screenshot
@@ -49,7 +85,7 @@ pnpm screenshot
 - 可调整截图前的等待：`CHESS_CAPTURE_DELAY=20000 pnpm screenshot`。
 - 截图由 Electron 自己的 `webContents.capturePage()` 完成，不是浏览器模拟。
 
-## 4. 交互自动化脚本
+## 4. Electron 交互自动化脚本
 
 仅供开发/验收使用，正常游戏不启用。Electron 主进程支持以下环境变量：
 
@@ -89,7 +125,7 @@ env -u DISPLAY -u WAYLAND_DISPLAY \
 
 > 合成 `PointerEvent` 没有活跃的 pointer capture，R3F 可能打印 `releasePointerCapture` 警告；真实用户鼠标不会触发该警告，落子验证不受影响。
 
-## 5. 手工检查清单
+## 5. 手工检查清单（浏览器同样适用）
 
 - [ ] 点击己方棋子：金色高亮、合法点、选中说明。
 - [ ] 点击目标格：棋子弧线移动、最后一步标记、合成音效。
@@ -117,7 +153,7 @@ pnpm dist       # 生成平台安装包
 
 ## 7. GitHub Actions
 
-- `.github/workflows/ci.yml`：`main` push / PR 上运行 `typecheck`、`test`、`build`。
+- `.github/workflows/ci.yml`：`main` push / PR 上运行 `typecheck`、`test`、`build`，并启动浏览器版后端做 HTTP/静态资源 smoke 测试。
 - `.github/workflows/release.yml`：`v*` tag 触发三平台原生构建，全部成功后自动生成 GitHub Release。
 - 手动运行 Release 工作流只会产出 7 天有效的 workflow artifacts；不会创建 Release。
 - tag 名（去掉 `v`）必须等于 `package.json.version`。
