@@ -44,6 +44,7 @@ http://127.0.0.1:8787/
 | `pnpm web:build` | 只构建 Web 前端与后端，不构建 Electron |
 | `CHESS_PORT=8788 pnpm web:serve` | 使用其它端口 |
 | `CHESS_NO_OPEN=1 pnpm web` | 禁止自动打开浏览器 |
+| `pnpm web:serve` + Docker | 使用 [Docker 容器](DOCKER.md) 在隔离镜像中运行 |
 
 开发模式：
 
@@ -68,7 +69,7 @@ flowchart LR
 - 前端仍然是 `apps/web` 的 React + Three.js 渲染器；
 - 后端仍然是 `apps/server` 的权威棋规、会话与 AI 服务；
 - 后端在同一个端口提供静态文件和 API，因此浏览器端只需要一个地址；
-- 服务端只绑定 `127.0.0.1`，不会监听局域网；
+- 服务端默认只绑定 `127.0.0.1`，不会监听局域网；容器内使用 `CHESS_HOST=0.0.0.0`，见 [Docker 指南](DOCKER.md)。
 - 使用普通 HTTP，不需要 HTTPS、证书或反向代理；
 - 不需要账号、登录、用户资料或多人房间。
 

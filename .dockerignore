@@ -1,0 +1,26 @@
+# Keep the Docker build context focused on the browser service.
+.git
+.gitignore
+.gitattributes
+.github
+.vscode
+.idea
+
+node_modules
+**/node_modules
+
+release
+artifacts
+.screenshots
+docs
+build
+
+apps/*/dist
+apps/server/dist-container
+apps/server/test
+
+scripts/automation
+scripts/capture.sh
+
+**/*.log
+.DS_Store

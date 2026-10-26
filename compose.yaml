@@ -1,0 +1,20 @@
+services:
+  nocturne-chess:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: nocturne-chess-web:local
+    init: true
+    restart: unless-stopped
+    ports:
+      # Keeps the unauthenticated local game to this machine only.
+      - "127.0.0.1:8787:8787"
+    environment:
+      CHESS_HOST: "0.0.0.0"
+      CHESS_PORT: "8787"
+      CHESS_NO_OPEN: "1"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    stop_grace_period: 10s

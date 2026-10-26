@@ -72,3 +72,56 @@ jobs:
             http://127.0.0.1:8799/ -o /tmp/nocturne-index.html
           grep -q '<title>Nocturne Chess</title>' /tmp/nocturne-index.html
           echo "Browser web smoke test passed."
+
+  docker:
+    name: Docker web image
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build --tag nocturne-chess-web:ci .
+
+      - name: Smoke test container
+        shell: bash
+        run: |
+          set -euo pipefail
+          container=nocturne-chess-web-ci
+
+          cleanup() {
+            docker logs "$container" || true
+            docker rm --force "$container" > /dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+
+          docker run --detach --name "$container" \
+            --publish 127.0.0.1:8790:8787 \
+            nocturne-chess-web:ci
+
+          ready=0
+          for attempt in $(seq 1 45); do
+            if curl --fail --silent --show-error \
+              http://127.0.0.1:8790/api/health > /dev/null 2>&1; then
+              ready=1
+              break
+            fi
+            sleep 1
+          done
+          if [[ "$ready" != "1" ]]; then
+            echo "Container did not become ready."
+            exit 1
+          fi
+
+          curl --fail --silent --show-error \
+            http://127.0.0.1:8790/api/health > /dev/null
+          curl --fail --silent --show-error \
+            http://127.0.0.1:8790/api/runtime > /dev/null
+          curl --fail --silent --show-error \
+            http://127.0.0.1:8790/favicon.png > /dev/null
+          curl --fail --silent --show-error \
+            http://127.0.0.1:8790/ -o /tmp/nocturne-docker-index.html
+          grep -q '<title>Nocturne Chess</title>' /tmp/nocturne-docker-index.html
+          test "$(docker exec "$container" id -u)" = "1000"
+          echo "Docker web smoke test passed."

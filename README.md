@@ -35,6 +35,7 @@ Nocturne Chess 现在是一个**浏览器优先**的国际象棋 Web 应用。�
 | Backend | 本地 Node.js、`ws`、chess.js |
 | Protocol | 共享 TypeScript 类型 + JSON over WebSocket |
 | Desktop（可选） | Electron 45、electron-builder |
+| Container（可选） | Docker 多阶段构建、Node 24 slim、Compose |
 | Test | Vitest |
 | Tooling | pnpm workspace、tsup |
 
@@ -93,12 +94,34 @@ pnpm screenshot
 
 首次桌面开发会下载 Electron 二进制；Web 模式本身不依赖 Electron 运行时。
 
+## Docker 容器（可选）
+
+浏览器模式也可以打成自包含 Docker 镜像：运行层只包含静态前端、一个自包含 Node 后端和启动脚本，不包含 Electron、pnpm、游戏业务源码或 `node_modules`。
+
+```bash
+docker build -t nocturne-chess-web:local .
+
+# 只发布到本机回环地址；无认证服务不暴露到局域网
+docker run --rm -p 127.0.0.1:8787:8787 nocturne-chess-web:local
+# 反过来，你也可以用 Compose：
+docker compose up --build
+```
+
+打开 **http://127.0.0.1:8787/**。
+
+- 多阶段构建：构建层安装依赖并打包，运行层使用非 root `node` 用户；
+- `server.cjs` 自包含 `ws`、`chess.js` 与共享协议，容器运行无需安装 npm 包；
+- 内置 `/api/health` 健康检查，Compose 默认将端口绑定到 `127.0.0.1`；
+- 仍然不需要登录、认证或 HTTPS，适合本机单人试玩。
+
+构建结构、配置项、端口映射和安全边界见 [Docker 运行指南](docs/DOCKER.md)。CI 中包含独立的 Docker 镜像构建与运行冒烟任务。
+
 ## 跨平台构建与发布
 
 仓库包含两条 GitHub Actions 工作流：
 
-- **CI**：`main` push / PR 时在 Linux 上执行类型检查、32 项测试、生产构建，并启动一次浏览器 Web 服务 smoke 检查；
-- **Release**：推送 `v*` tag 时，在 Ubuntu、Windows、macOS 原生 runner 上并行构建 AppImage、NSIS 与两个 DMG，全部成功后自动创建 GitHub Release 并附加 `SHA256SUMS.txt`。浏览器模式无需安装包，`pnpm web` 即可本地运行。
+- **CI**：`main` push / PR 时在 Linux 上执行类型检查、32 项测试、生产构建、浏览器 Web 服务 smoke 检查，以及独立的 Docker 镜像构建与容器运行检查；
+- **Release**：推送 `v*` tag 时，在 Ubuntu、Windows、macOS 原生 runner 上并行构建 AppImage、NSIS 与两个 DMG，全部成功后自动创建 GitHub Release 并附加 `SHA256SUMS.txt`。浏览器模式无需安装包，`pnpm web` 或 Docker 即可本地运行。
 
 ```bash
 # 版本号同步后，用 tag 触发三平台发布
@@ -123,6 +146,9 @@ git push origin v1.0.0
 ## 项目结构
 
 ```
+Dockerfile           浏览器服务的多阶段镜像
+.dockerignore        Docker 构建上下文
+compose.yaml         本机 Docker Compose 配置
 apps/
   desktop/          Electron 主进程、preload、窗口与后端生命周期
   server/           棋局引擎、会话、WebSocket/HTTP 服务、AI provider
@@ -141,6 +167,7 @@ docs/
   PROTOCOL.md       WebSocket / HTTP 协议参考
   AI_EXTENSION.md   AI 引擎扩展开发指南
   WEB.md            浏览器运行、端口、兼容性、本地排障
+  DOCKER.md         Docker 构建、运行、配置与安全边界
   TESTING.md        类型/测试/截图/交互验收方法
   RELEASING.md      GitHub Actions 跨平台构建、签名与发布
   ROADMAP.md        分阶段开发路线与后续方向
@@ -196,12 +223,13 @@ flowchart LR
 - 后端 **32 项** Vitest（棋规、AI provider、WebSocket/HTTP 集成）；
 - Vite 生产构建与 Electron 主进程打包；
 - `pnpm web:build` 浏览器构建、`pnpm web:serve` 本地静态/HTTP/WS 服务；
-- Brave/Chromium 1440 × 960 真实浏览器渲染；Firefox 页面结构正常加载；
+- Docker 多阶段镜像构建、容器启动、健康检查、非 root 用户与 SIGTERM 优雅退出；
+- Brave/Chromium 1440 × 960 真实浏览器渲染；Docker 容器同样经真实浏览器与 WebSocket 对局验证；Firefox 页面结构正常加载；
 - 浏览器原生 WebSocket（Node 24 全局 API）完成 `welcome`、棋盘状态与 `e2 → e4` 对局；
 - 开发模式下 Vite HTTP/WS 代理的真实链路；
 - Electron 实机、`electron-builder --dir` 与 Linux AppImage 产物启动；
 - macOS/Windows 原生构建配置、平台图标、应用菜单与 Windows AppUserModelID；
-- GitHub Actions 三平台构建矩阵与 tag 驱动 Release 工作流；首轮 CI 与 Windows/macOS/Linux 原生构建冒烟均通过，CI 现已加入浏览器 Web 服务 smoke；
+- GitHub Actions 三平台构建矩阵与 tag 驱动 Release 工作流；首轮 CI 与 Windows/macOS/Linux 原生构建冒烟均通过，CI 现包含浏览器 Web 服务与 Docker 容器 smoke；
 - 真实 Canvas 指针事件端到端：点击 e2 → e4 成功落子；
 - AI 执白自动落子、黑方视角翻转、窄窗抽屉面板、终局弹窗与 2D 降级棋盘截图；
 - 完整场景 3 秒帧率采样 **60.2 FPS**（p95 帧时间 16.8ms，1024×653/DPR 1）。
@@ -209,8 +237,9 @@ flowchart LR
 ## 已知边界
 
 - Web 模式是“本机 Node 后端 + 浏览器页面”，不是只上传静态文件即可运行的纯静态站点；若要部署到远端，需要同时部署后端并调整访问控制。
+- Docker 镜像同样不包含用户认证或 HTTPS；默认示例只发布到宿主机 `127.0.0.1`，不要直接把端口暴露到公网或局域网。
 - 不包含登录、账号、云存档、多人联机或 HTTPS；按需求仅面向本机单人试玩。
-- 对局仅保存在当前 WebSocket 连接内；后端重启/刷新页面会开始新对局。
+- 对局仅保存在当前 WebSocket/容器进程内存中；后端重启、容器重启或刷新页面会开始新对局。
 - 内置 AI 是占位引擎，适合验证完整链路，不追求棋力。
 - 暂无时钟、PGN、复盘、联机对战；路线图见 [ROADMAP](docs/ROADMAP.md)。
 - 发布配置提供 Linux AppImage、Windows NSIS（非管理员安装）与 macOS x64/arm64 DMG；Linux AppImage 与解包目录已在本机实际启动验证，Windows/macOS 由 GitHub Actions 原生 runner 构建。

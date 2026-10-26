@@ -6,3 +6,4 @@ release/
 apps/web/.vite/
 artifacts/
 .screenshots/
+dist-container/

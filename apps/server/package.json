@@ -16,7 +16,8 @@
     "start": "node dist/cli.cjs",
     "build": "tsup",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "build:container": "tsup --config tsup.container.config.ts"
   },
   "dependencies": {
     "@nocturne/chess-shared": "workspace:*",

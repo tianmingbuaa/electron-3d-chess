@@ -151,9 +151,36 @@ pnpm dist       # 生成平台安装包
 
 已验证 Linux `release/linux-unpacked/nocturne-chess` 能启动、提供本地后端，并加载 packaged asar 内的主进程与 resources/web 静态前端。
 
-## 7. GitHub Actions
+## 7. Docker 容器验收
 
-- `.github/workflows/ci.yml`：`main` push / PR 上运行 `typecheck`、`test`、`build`，并启动浏览器版后端做 HTTP/静态资源 smoke 测试。
+```bash
+docker build -t nocturne-chess-web:local .
+docker run --rm -d --name nocturne-chess-web \
+  -p 127.0.0.1:8787:8787 nocturne-chess-web:local
+
+curl -fsS http://127.0.0.1:8787/api/health
+curl -fsS http://127.0.0.1:8787/api/runtime
+curl -fsS http://127.0.0.1:8787/ | grep -q "Nocturne Chess"
+docker exec nocturne-chess-web id
+docker inspect --format '{{.State.Health.Status}}' nocturne-chess-web
+docker stop nocturne-chess-web
+```
+
+已验证：
+
+- 镜像构建成功，运行阶段为 `uid=1000(node)` 非 root 用户；
+- 健康检查最终为 `healthy`；
+- 页面、API、favicon、`/api/runtime` 正常；
+- Brave 1440×960 对容器服务完成真实 3D 渲染；
+- 浏览器原生 WebSocket 完成 `e2 → e4`；
+- `docker stop` 触发 SIGTERM，Node 服务优雅退出；
+- `docker compose up --build` 可启动，默认宿主机端口绑定到 `127.0.0.1`。
+
+构建结构、变量和安全边界见 [DOCKER.md](DOCKER.md)。
+
+## 8. GitHub Actions
+
+- `.github/workflows/ci.yml`：`main` push / PR 上运行 `typecheck`、`test`、`build`，启动浏览器版后端做 HTTP/静态资源 smoke 测试，并独立构建、运行 Docker 镜像做容器 smoke。
 - `.github/workflows/release.yml`：`v*` tag 触发三平台原生构建，全部成功后自动生成 GitHub Release。
 - 手动运行 Release 工作流只会产出 7 天有效的 workflow artifacts；不会创建 Release。
 - tag 名（去掉 `v`）必须等于 `package.json.version`。

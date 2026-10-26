@@ -62,6 +62,27 @@ electron main
 - 页面与 API 同源，因此无需 CORS；没有暴露到局域网的监听。
 - 应用退出时优雅关闭 HTTP/WS 服务。
 
+### 容器模式（可选）
+
+```text
+Dockerfile
+├─ build stage（Node 24 slim）
+│  ├─ 只构建 Web 与 Server 工作区（运行镜像不含 Electron）
+│  ├─ Vite → apps/web/dist
+│  └─ tsup → dist-container/index.cjs（自包含 ws + chess.js + shared）
+└─ runtime stage（Node 24 slim）
+   ├─ apps/web/dist
+   ├─ apps/server/server.cjs
+   ├─ scripts/serve-web.mjs
+   └─ USER node · EXPOSE 8787 · HEALTHCHECK /api/health
+```
+
+- 容器内通过 `CHESS_HOST=0.0.0.0` 监听，宿主机用 `-p 127.0.0.1:8787:8787` 发布端口。
+- `compose.yaml` 默认同样把端口绑定到宿主机回环地址，避免无认证服务暴露在局域网。
+- Runtime 镜像中无 pnpm、Vite、Electron、游戏业务源码或 `node_modules`；只保留静态页面、自包含后端 bundle 和启动脚本。
+- 容器重启会丢失内存对局，与本地 Web 模式一致。
+- CI 有独立的 Docker job 做镜像构建与容器 HTTP 冒烟。
+
 ### 为什么不用 Electron IPC 传棋局？
 
 Electron IPC 很适合文件对话框、系统能力等桌面 API，但把棋局协议绑定到 IPC 会让后端无法脱离 Electron、难以做黑盒测试，也不利于浏览器模式或将来替换为远程对战。
@@ -96,7 +117,11 @@ apps/web
 └─ public/              favicon / Apple touch icon
 
 scripts
-└─ serve-web.mjs        浏览器单机模式的本地启动器（构建产物 + API + WS）
+└─ serve-web.mjs        浏览器/容器共用的本地启动器（构建产物 + API + WS）
+
+Dockerfile              多阶段浏览器服务镜像
+.dockerignore
+compose.yaml
 
 .github/workflows
 ├─ ci.yml               main/PR 的类型、测试、构建检查
@@ -178,6 +203,7 @@ sequenceDiagram
 
 - 浏览器构建目标为 ES2022，不依赖 Electron 专属 API；macOS 顶部交通灯留白只在检测到 Electron bridge 后启用。
 - 前端图标使用本地 favicon；静态服务为浏览器提供正确的 MIME、缓存与 CSP 头。
+- Docker 运行阶段使用非 root 的 `node` 用户；Compose 进一步丢弃全部 Linux capabilities 并启用 `no-new-privileges`。
 - 所有主进程与后端文件路径通过 `node:path` 构造；用户目录、ASAR 内的 `__dirname` 与 `process.resourcesPath` 分别适配 macOS `.app/Contents/Resources` 与 Windows/Linux `resources/`。
 - 静态服务器使用规范化路径 + realpath 边界检查，并在 URL 层拒绝反斜杠、盘符、`..` 与隐藏段，因此 Windows 路径语义不会绕过根目录。
 - Windows：`AppUserModelID` 与 `appId` 一致；NSIS 使用 ICO、多尺寸图标与非管理员安装模式。
@@ -189,7 +215,8 @@ sequenceDiagram
 
 ## 安全
 
-- **浏览器模式**没有登录/账号概念，也不要求 HTTPS；服务固定绑定 `127.0.0.1`，不对局域网开放。
+- **浏览器模式**没有登录/账号概念，也不要求 HTTPS；默认绑定 `127.0.0.1`，不对局域网开放。
+- **容器模式**容器内监听 `0.0.0.0` 只为端口映射；默认文档和 Compose 都将发布端口限制在宿主机 `127.0.0.1`。无认证服务不应直接暴露到公网。
 - `/api/runtime` 下发的随机 token 仅是本地 WebSocket 的内部卫生措施（防止其它网页随意连接），不是用户认证，用户无感知。
 - **Electron 模式**：`contextIsolation`、`sandbox` 开启，渲染器无 Node 权限；外部链接在系统浏览器打开，窗口内导航被阻止。
 - 两种模式都由后端设置 CSP，禁止对象、表单、frame 注入；脚本仅同源（开发期 Vite 需 inline preamble，因此 meta 允许 inline）。
@@ -213,3 +240,4 @@ sequenceDiagram
 4. **联机对战**：把 WebSocket 层替换为房间路由，同一 `GameSession` 可挂多个观众/玩家连接。
 5. **多语言**：UI 文案目前集中在组件与 `lib/pieces.ts`，可迁移到 i18n 字典。
 6. **远端 Web 部署**：若要公开访问，需补充鉴权、房间隔离、HTTPS/TLS 终止与持久化；这与本期“本机单人试玩”边界不同。
+7. **镜像仓库发布**：可在 CI 中登录 GHCR/Registry 并推送带版本 tag 的镜像；当前只做本地/CI 构建验证。

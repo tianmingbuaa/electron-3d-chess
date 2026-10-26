@@ -14,6 +14,7 @@
 | 5 | 打包验证、最终文档与全链路回归 | 完成 |
 | 6 | GitHub Actions 三平台 CI 与 Release 发布 | 完成（首轮 CI + 三平台构建冒烟通过） |
 | 7 | 浏览器本地 Web 模式：启动器、文档、真实浏览器验收 | 完成 |
+| 8 | Docker 容器化：多阶段镜像、自包含后端、Compose、CI 冒烟 | 完成 |
 
 ## 阶段 0：架构与契约
 
@@ -118,6 +119,18 @@
 - [x] CI 增加浏览器 Web 服务 smoke 测试
 - [x] Brave/Chromium 1440×960 真实渲染、Firefox 页面加载、浏览器原生 WebSocket 对局验证
 
+## 阶段 8：Docker 容器化
+
+- [x] 多阶段 Dockerfile：Node 24 slim builder + 精简 runtime
+- [x] 只构建 Web/Server，运行镜像不含 Electron、pnpm、业务源码或 node_modules
+- [x] `tsup.container.config.ts` 打包自包含 server bundle（ws/chess.js/shared）
+- [x] `serve-web.mjs` 支持容器 `CHESS_HOST=0.0.0.0` 与构建产物路径环境变量
+- [x] 非 root `node` 用户、`EXPOSE 8787`、Node fetch `/api/health` 健康检查
+- [x] `.dockerignore` 缩小上下文，`compose.yaml` 默认仅发布到宿主机 loopback
+- [x] CI 独立 Docker job：镜像构建 + 容器运行 + HTTP smoke
+- [x] 实际构建镜像、运行、浏览器渲染、WebSocket 对局、Compose、SIGTERM 优雅停止
+- [x] Docker 文档与 README/架构/测试/路线互链
+
 ## 实际验收记录
 
 | 检查 | 结果 |
@@ -136,6 +149,10 @@
 | 3D 降级 | 无 WebGL 时自动切换 2D 棋盘，可继续对弈 |
 | 截图 | 1440×960 浏览器实机窗口，见 `docs/images/nocturne-chess-browser.png` |
 | 渲染帧率 | 1024×653 / DPR 1：60.2 FPS，p95 16.8ms |
+| Docker 镜像 | `docker build` 成功，运行用户 `uid=1000(node)`，健康检查 `healthy` |
+| Docker 完整链路 | 页面/API/favicon 正常；Brave 1440×960 渲染；WebSocket `e2→e4` 成功 |
+| Docker Compose | `docker compose up --build` 通过，端口仅绑定 `127.0.0.1` |
+| CI | 浏览器 Web smoke + 独立 Docker job 已加入 `.github/workflows/ci.yml` |
 | GitHub Actions CI | 通过（[run 40204195388](https://github.com/tianmingbuaa/electron-3d-chess/actions/runs/40204195388)） |
 | 三平台构建 | Windows x64 / macOS x64+arm64 / Linux x64 全部成功；Release job 按预期在非 tag 运行中跳过（[run 40204315643](https://github.com/tianmingbuaa/electron-3d-chess/actions/runs/40204315643)） |
 
@@ -149,6 +166,7 @@
 6. **主题工坊**：可替换材质包/棋子套装/环境光照。
 7. **签名与自动更新**：Apple notarization、Windows Authenticode、更新服务器/签名校验。
 8. **国际化**：多语言 UI 与文档。
+9. **容器镜像发布**：登录 GHCR/Registry，按版本推送镜像并补充 SBOM/签名。
 
 ## 协作拆分子 agent 的理由
 
